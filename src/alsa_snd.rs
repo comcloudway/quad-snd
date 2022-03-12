@@ -1,6 +1,12 @@
 // roughly based on http://equalarea.com/paul/alsa-audio.html
 
-use crate::{error::Error, PlaySoundParams};
+use crate::{
+    error::Error,
+    PlaySoundParams,
+    AudioDevice,
+    AudioDeviceImpl,
+    AudioCallback
+};
 
 use quad_alsa_sys as sys;
 
@@ -177,5 +183,12 @@ impl Sound {
 
     pub fn set_volume(&mut self, ctx: &mut AudioContext, volume: f32) {
         ctx.mixer_ctrl.set_volume(self.id, volume);
+    }
+}
+
+
+impl<CB> AudioDeviceImpl for AudioDevice<CB> where CB: AudioCallback {
+    fn resume(&mut self) -> Result<(), Error> {
+        Ok(())
     }
 }

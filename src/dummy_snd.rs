@@ -1,4 +1,10 @@
-use crate::PlaySoundParams;
+use crate::{
+    PlaySoundParams,
+    AudioCallback,
+    AudioParams,
+    AudioDeviceImpl,
+    AudioDevice
+};
 
 pub struct AudioContext {}
 
@@ -20,4 +26,8 @@ impl Sound {
     pub fn stop(&mut self, _ctx: &mut AudioContext) {}
 
     pub fn set_volume(&mut self, _volume: f32) {}
+}
+
+impl AudioDeviceImpl for AudioDevice {
+
 }
