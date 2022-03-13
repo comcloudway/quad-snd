@@ -1,27 +1,35 @@
 # quad-snd
 
-High-level, light-weight, and opinionated audio library.
+**If you are into simple and minimalistic game development and you only want to play prerecorded files, this fork wont be of use to you - checkout the original quad-snd project instead (link below)**
 
-- [x] Web: WebAudio  
-- [x] Android: OpenSLES  
-- [x] Linux: Alsa  
-- [x] macOS: CoreAudio  
-- [x] Windows: Wasapi
-- [X] iOS: CoreAudio
+This is a fork of [not-fl3's](https://github.com/not-fl3) [quad-snd](https://github.com/not-fl3/quad-snd) a high-level, light-weight, and opinionated audio library,
+but this forks goal is to remove all the high-level mixer functionality, instead replacing it with a low-level manual buffer-callback approach.
 
-Being high-level enough allows `quad-snd` to use very different approaches to each backend. For example, for WebAudio all the playback and mixing is based on Audio nodes, while in OpenSLES `quad-snd` itself is responsible for mixing.
+See the Goals section for more information
 
-`quad-snd` lacks lots of features and the best way to use the library - either fork a repo and fine-tune it for your needs or just copy-paste some code from certain audio backends.
+## Goals
+- remove high-level code, including sound file loading mechanism
+- be a low-level approach
+- fill a buffer using a callback
+- structure similar to the one used by `rust-sdl2's` audio subsystem 
 
-Biggest difference from any other sound library in rust:  
-`quad-snd` is small. Each backend implementation is ~300LoC code and is self sufficient - you can copy-paste the whole thing and run it, (almost)no common code, dependencies or anything like that would be required.
+## Support
+This fork is still in its early stages,
+and even though the original `quad-snd` library has support for all the following platforms,
+it will take a while until that level of support has been achived.
 
-The only dependency is `audrey`. `audrey` helps backends that do not have file parsing functionality (all the platforms but web) to get bytes out of encoded .wav/.ogg. When web is not required - getting rid of `audrey` and use anything else(or nothing at all) for audio decoding is a super easy fix.
+- [ ] Web: WebAudio
+- [ ] Android: OpenSLES
+- [x] Linux: Alsa
+- [ ] macOS: CoreAudio
+- [ ] Windows: Wasapi
+- [ ] iOS: CoreAudio
 
 ## Attribution
+Some Attribution taken from the original repository
 
-While building `quad-snd` I looked into the implementation of the following libraries:
+- https://github.com/floooh/sokol/blob/master/sokol_audio.h
+- https://github.com/norse-rs/audir
+- https://github.com/unrust/uni-snd
 
-https://github.com/floooh/sokol/blob/master/sokol_audio.h  
-https://github.com/norse-rs/audir  
-https://github.com/unrust/uni-snd  
+And obviously a huge shoutout to the original repository https://github.com/not-fl3/quad-snd
