@@ -6,7 +6,7 @@ use quad_snd::{
 };
 
 /// store the sample rate globally
-static SAMPLE_RATE: usize = 44_800;
+static SAMPLE_RATE: usize = 44_100;
 
 /// a simple sine wave generator
 struct Sine {
@@ -31,7 +31,7 @@ pub fn main() {
         freq: SAMPLE_RATE,
         // mono channel output
         // NOTE: Multichannel setups have to be handled manually
-        channels: 1
+        channels: 2
     };
 
     // create a new audio device
