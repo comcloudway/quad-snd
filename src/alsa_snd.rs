@@ -8,7 +8,8 @@ use crate::{
     AudioParams
 };
 
-use quad_alsa_sys as sys;
+//use quad_alsa_sys as sys;
+use alsa_sys as sys;
 
 use std::sync::mpsc;
 

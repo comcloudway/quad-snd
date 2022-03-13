@@ -10,8 +10,9 @@ description = "Low level and cross platform audio library"
 audir-sles = "0.1.0"
 
 [target.'cfg(any(target_os = "linux", target_os = "dragonfly", target_os = "freebsd"))'.dependencies]
-quad-alsa-sys = "*"
 libc = "0.2"
+alsa = "0.4.3"
+alsa-sys = "*"
 
 [target.'cfg(target_os = "windows")'.dependencies]
 winapi = { version = "0.3.8", features = ["debug", "ksmedia", "audioclient", "combaseapi", "coml2api", "devpkey", "handleapi", "mmdeviceapi", "objbase", "unknwnbase", "winerror", "synchapi", "winbase"] }
