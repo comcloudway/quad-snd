@@ -48,9 +48,9 @@ impl Default for PlaySoundParams {
 #[derive(Copy, Clone)]
 pub struct AudioParams {
     /// sample rate to use
-    freq: usize,
+    pub freq: usize,
     /// channel count
-    channels: usize,
+    pub channels: usize,
 }
 impl Default for AudioParams {
     fn default() -> Self {
