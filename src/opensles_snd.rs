@@ -1,6 +1,10 @@
-use crate::PlaySoundParams;
-
-use std::sync::mpsc;
+use crate::{
+    error::Error,
+    AudioDevice,
+    AudioDeviceImpl,
+    AudioCallback,
+    AudioParams
+};
 
 // Slightly reduced OpenSLES implementation
 // from an amazing "audir" library: https://github.com/norse-rs/audir/
@@ -343,7 +347,7 @@ mod opensles {
     }
 }
 
-unsafe fn audio_thread(mut mixer: crate::mixer::Mixer, rx1: mpsc::Receiver<ControlMessage>) {
+unsafe fn audio_thread<CB: 'static + AudioCallback + std::marker::Send>(mut cb: CB, spec: AudioParams) {
     use opensles::api::*;
 
     use std::collections::HashMap;
@@ -355,12 +359,12 @@ unsafe fn audio_thread(mut mixer: crate::mixer::Mixer, rx1: mpsc::Receiver<Contr
             DeviceDesc {
                 sample_desc: SampleDesc {
                     format: Format::F32,
-                    sample_rate: 44100,
+                    sample_rate: spec.freq,
                 },
             },
             Channels {
                 input: 0,
-                output: channel_mask::FRONT_LEFT | channel_mask::FRONT_RIGHT,
+                output: spec.channels as u32,
             },
             Box::new(move |stream| {
                 let properties = stream.properties;
@@ -371,79 +375,23 @@ unsafe fn audio_thread(mut mixer: crate::mixer::Mixer, rx1: mpsc::Receiver<Contr
                     stream.buffers.frames as usize * num_channels,
                 );
 
-                mixer.fill_audio_buffer(buffer, stream.buffers.frames as usize);
+                cb.callback(buffer, stream.buffers.frames as usize);
             }),
         )
         .unwrap();
 
     device.start();
+}
 
-    loop {
-        let message = rx1.recv().unwrap();
-        match message {
-            ControlMessage::Pause => {
-                device.pause();
-            }
-            ControlMessage::Resume => {
-                device.start();
-            }
+impl<CB> AudioDeviceImpl for AudioDevice<CB> where CB: 'static + AudioCallback + std::marker::Send {
+    fn resume(&mut self) -> Result<(), String> {
+        if let Some(cb) = self.callback.take() {
+            unsafe {
+                audio_thread(*cb, self.spec.clone());
+                }
+            Ok(())
+        } else {
+            Err(String::from("No AudioCallback found"))
         }
-    }
-}
-
-pub enum ControlMessage {
-    Pause,
-    Resume,
-}
-
-pub struct AudioContext {
-    mixer_ctrl: crate::mixer::MixerControl,
-    tx1: mpsc::Sender<ControlMessage>,
-}
-
-impl AudioContext {
-    pub fn new() -> AudioContext {
-        use crate::mixer::Mixer;
-
-        let (tx1, rx1) = mpsc::channel();
-
-        let (mixer, mixer_ctrl) = Mixer::new();
-        std::thread::spawn(move || unsafe {
-            audio_thread(mixer, rx1);
-        });
-
-        AudioContext { mixer_ctrl, tx1 }
-    }
-
-    pub fn pause(&mut self) {
-        self.tx1.send(ControlMessage::Pause).unwrap()
-    }
-
-    pub fn resume(&mut self) {
-        self.tx1.send(ControlMessage::Resume).unwrap()
-    }
-}
-
-pub struct Sound {
-    id: usize,
-}
-
-impl Sound {
-    pub fn load(ctx: &mut AudioContext, data: &[u8]) -> Sound {
-        let id = ctx.mixer_ctrl.load(data);
-
-        Sound { id }
-    }
-
-    pub fn play(&mut self, ctx: &mut AudioContext, params: PlaySoundParams) {
-        ctx.mixer_ctrl.play(self.id, params);
-    }
-
-    pub fn stop(&mut self, ctx: &mut AudioContext) {
-        ctx.mixer_ctrl.stop(self.id);
-    }
-
-    pub fn set_volume(&mut self, ctx: &mut AudioContext, volume: f32) {
-        ctx.mixer_ctrl.set_volume(self.id, volume);
     }
 }
