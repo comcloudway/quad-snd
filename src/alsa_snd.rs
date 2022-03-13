@@ -2,10 +2,10 @@
 
 use crate::{
     error::Error,
-    PlaySoundParams,
     AudioDevice,
     AudioDeviceImpl,
-    AudioCallback
+    AudioCallback,
+    AudioParams
 };
 
 use quad_alsa_sys as sys;
@@ -14,12 +14,10 @@ use std::sync::mpsc;
 
 mod consts {
     pub const DEVICE: &'static str = "default\0";
-    pub const RATE: u32 = 44100;
-    pub const CHANNELS: u32 = 2;
     pub const PCM_BUFFER_SIZE: ::std::os::raw::c_ulong = 4096;
 }
 
-unsafe fn setup_pcm_device() -> *mut sys::snd_pcm_t {
+unsafe fn setup_pcm_device(spec: AudioParams) -> *mut sys::snd_pcm_t {
     let mut pcm_handle = std::ptr::null_mut();
 
     // Open the PCM device in playback mode
@@ -49,11 +47,11 @@ unsafe fn setup_pcm_device() -> *mut sys::snd_pcm_t {
     if sys::snd_pcm_hw_params_set_buffer_size(pcm_handle, hw_params, consts::PCM_BUFFER_SIZE) < 0 {
         panic!("Cant's set buffer size");
     }
-    if sys::snd_pcm_hw_params_set_channels(pcm_handle, hw_params, consts::CHANNELS) < 0 {
+    if sys::snd_pcm_hw_params_set_channels(pcm_handle, hw_params, spec.channels as u32) < 0 {
         panic!("Can't set channels number.");
     }
 
-    let mut rate = consts::RATE;
+    let mut rate = spec.freq as u32;
     if sys::snd_pcm_hw_params_set_rate_near(pcm_handle, hw_params, &mut rate, std::ptr::null_mut())
         < 0
     {
@@ -101,10 +99,10 @@ unsafe fn setup_pcm_device() -> *mut sys::snd_pcm_t {
     pcm_handle
 }
 
-unsafe fn audio_thread<CB: AudioCallback>(mut cb: CB) {
+unsafe fn audio_thread<CB: AudioCallback>(mut cb: CB, spec: AudioParams) {
     let mut buffer: Vec<f32> = vec![0.0; consts::PCM_BUFFER_SIZE as usize * 2];
 
-    let pcm_handle = setup_pcm_device();
+    let pcm_handle = setup_pcm_device(spec);
 
     loop {
         // // find out how much space is available for playback data
@@ -149,7 +147,7 @@ impl<CB> AudioDeviceImpl for AudioDevice<CB> where CB: AudioCallback {
     fn resume(&mut self) -> Result<(), String> {
         if let Some(cb) = self.callback.take() {
             unsafe {
-                audio_thread(*cb);
+                audio_thread(*cb, self.spec.clone());
                 }
             Ok(())
         } else {
