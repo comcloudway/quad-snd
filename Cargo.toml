@@ -1,16 +1,13 @@
 [package]
 name = "quad-snd"
 version = "0.2.3"
-authors = ["Fedor Logachev <not.fl3@gmail.com>"]
+authors = ["Fedor Logachev <not.fl3@gmail.com>", "Jakob Meier <comcloudway@ccw.icu>"]
 edition = "2018"
 license = "MIT/Apache-2.0"
-description = "High level and cross platform audio library"
+description = "Low level and cross platform audio library"
 
 [target.'cfg(target_os = "android")'.dependencies]
 audir-sles = "0.1.0"
-
-[target.'cfg(not(target_arch = "wasm32"))'.dependencies]
-audrey = { version = "0.3", default-features = false, features = ["wav", "ogg_vorbis"] }
 
 [target.'cfg(any(target_os = "linux", target_os = "dragonfly", target_os = "freebsd"))'.dependencies]
 quad-alsa-sys = "0.3.2"
