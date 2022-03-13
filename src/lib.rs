@@ -12,7 +12,7 @@ mod snd;
 
 #[cfg(any(target_os = "linux", target_os = "dragonfly", target_os = "freebsd"))]
 #[path = "alsa_snd.rs"]
-mod snd;
+pub mod snd;
 
 #[cfg(any(target_os = "macos", target_os = "ios"))]
 #[path = "coreaudio_snd.rs"]
@@ -29,7 +29,7 @@ mod snd;
 #[cfg(not(target_arch = "wasm32"))]
 mod mixer;
 
-pub use snd::{AudioContext, Sound};
+//pub use snd;
 
 pub struct PlaySoundParams {
     pub looped: bool,
@@ -62,14 +62,14 @@ impl Default for AudioParams {
 }
 pub trait AudioCallback {
     /// fills the audio buffer
-    fn callback(&mut self, out: &mut [f32]) {
+    fn callback(&mut self, _buffer: &mut [f32], _frames: usize) {
 
     }
 }
 
 pub struct AudioDevice<CB: AudioCallback> {
     spec: AudioParams,
-    callback: Box<Option<CB>>
+    callback: Option<Box<CB>>
 }
 
 /// underlying access to the audio system
@@ -77,18 +77,17 @@ pub struct AudioDevice<CB: AudioCallback> {
 pub struct AudioSystem;
 impl AudioSystem {
     /// loads the given Callback & Params setup
-    fn open_device<CB: AudioCallback, F>(spec: AudioParams, func: F) -> AudioDevice<CB>
+    pub fn open_device<CB: AudioCallback, F>(spec: AudioParams, func: F) -> AudioDevice<CB>
     where F: FnOnce(AudioParams) -> CB {
         AudioDevice {
             spec: spec.clone(),
-            callback: Box::new(Some((func)(spec)))
+            callback: Some(Box::new((func)(spec)))
         }
     }
 }
-pub type AudioCallbackSetup<'a> = FnOnce(AudioParams) -> &'a dyn AudioCallback;
 
 /// trait used to generate audio
 pub trait AudioDeviceImpl {
     /// attempts to start audio playback
-    fn resume(&mut self) -> Result<(), Error>;
+    fn resume(&mut self) -> Result<(), String>;
 }

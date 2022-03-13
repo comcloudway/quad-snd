@@ -101,7 +101,7 @@ unsafe fn setup_pcm_device() -> *mut sys::snd_pcm_t {
     pcm_handle
 }
 
-unsafe fn audio_thread(mut mixer: crate::mixer::Mixer) {
+unsafe fn audio_thread<CB: AudioCallback>(mut cb: CB) {
     let mut buffer: Vec<f32> = vec![0.0; consts::PCM_BUFFER_SIZE as usize * 2];
 
     let pcm_handle = setup_pcm_device();
@@ -122,8 +122,8 @@ unsafe fn audio_thread(mut mixer: crate::mixer::Mixer) {
 
         let frames_to_deliver = consts::PCM_BUFFER_SIZE as i64;
 
-        // ask mixer to fill the buffer
-        mixer.fill_audio_buffer(&mut buffer, frames_to_deliver as usize);
+        // ask audiocallback to fill the buffer
+        cb.callback(&mut buffer, frames_to_deliver as usize);
 
         // send filled buffer back to alsa
         let frames_writen = sys::snd_pcm_writei(
@@ -145,50 +145,15 @@ unsafe fn audio_thread(mut mixer: crate::mixer::Mixer) {
     }
 }
 
-pub struct AudioContext {
-    mixer_ctrl: crate::mixer::MixerControl,
-}
-
-impl AudioContext {
-    pub fn new() -> AudioContext {
-        use crate::mixer::Mixer;
-
-        let (mixer, mixer_ctrl) = Mixer::new();
-        std::thread::spawn(move || unsafe {
-            audio_thread(mixer);
-        });
-
-        AudioContext { mixer_ctrl }
-    }
-}
-
-pub struct Sound {
-    id: usize,
-}
-
-impl Sound {
-    pub fn load(ctx: &mut AudioContext, data: &[u8]) -> Sound {
-        let id = ctx.mixer_ctrl.load(data);
-
-        Sound { id }
-    }
-
-    pub fn play(&mut self, ctx: &mut AudioContext, params: PlaySoundParams) {
-        ctx.mixer_ctrl.play(self.id, params);
-    }
-
-    pub fn stop(&mut self, ctx: &mut AudioContext) {
-        ctx.mixer_ctrl.stop(self.id);
-    }
-
-    pub fn set_volume(&mut self, ctx: &mut AudioContext, volume: f32) {
-        ctx.mixer_ctrl.set_volume(self.id, volume);
-    }
-}
-
-
 impl<CB> AudioDeviceImpl for AudioDevice<CB> where CB: AudioCallback {
-    fn resume(&mut self) -> Result<(), Error> {
-        Ok(())
+    fn resume(&mut self) -> Result<(), String> {
+        if let Some(cb) = self.callback.take() {
+            unsafe {
+                audio_thread(*cb);
+                }
+            Ok(())
+        } else {
+            Err(String::from("No AudioCallback found"))
+        }
     }
 }
