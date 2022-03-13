@@ -106,12 +106,12 @@ unsafe fn audio_thread<CB: AudioCallback>(mut cb: CB, spec: AudioParams) {
     );
 
     let format = WAVEFORMATEX {
-        nChannels: channles as _,
+        nChannels: channels as _,
         nSamplesPerSec: sample_rate as _,
         wFormatTag: WAVE_FORMAT_EXTENSIBLE,
         wBitsPerSample: 32,
-        nBlockAlign: channles as u16 * 4,
-        nAvgBytesPerSec: channles as u32 * sample_rate as u32 * 4,
+        nBlockAlign: channels as u16 * 4,
+        nAvgBytesPerSec: channels as u32 * sample_rate as u32 * 4,
         cbSize: (std::mem::size_of::<WAVEFORMATEXTENSIBLE>() - std::mem::size_of::<WAVEFORMATEX>())
             as _,
     };
@@ -182,7 +182,7 @@ unsafe fn audio_thread<CB: AudioCallback>(mut cb: CB, spec: AudioParams) {
 
         let buffer = std::slice::from_raw_parts_mut(
             wasapi_buffer as *mut f32,
-            num_frames as usize * channles as usize,
+            num_frames as usize * channels as usize,
         );
 
         cb.callback(buffer, num_frames as usize);
