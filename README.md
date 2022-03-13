@@ -18,12 +18,12 @@ This fork is still in its early stages,
 and even though the original `quad-snd` library has support for all the following platforms,
 it will take a while until that level of support has been achived.
 
-- [ ] Web: WebAudio
-- [ ] Android: OpenSLES
-- [x] Linux: Alsa
-- [ ] macOS: CoreAudio
-- [ ] Windows: Wasapi
-- [ ] iOS: CoreAudio
+- [ ] Web: WebAudio (impossible as of now)
+- [x] Android: OpenSLES (checks done, untested)
+- [x] Linux: Alsa (checks done, tested)
+- [ ] macOS: CoreAudio (error)
+- [x] Windows: Wasapi (checks done, untested)
+- [ ] iOS: CoreAudio (error)
 
 ## Attribution
 Some Attribution taken from the original repository
