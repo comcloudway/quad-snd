@@ -1,7 +1,13 @@
 // https://github.com/floooh/sokol/blob/master/sokol_audio.h
 // https://github.com/norse-rs/audir/blob/master/audir/src/wasapi/mod.rs
 
-use crate::PlaySoundParams;
+use crate::{
+    error::Error,
+    AudioDevice,
+    AudioDeviceImpl,
+    AudioCallback,
+    AudioParams
+};
 
 use winapi::shared::guiddef::{CLSID, IID};
 use winapi::shared::ksmedia;
@@ -57,12 +63,13 @@ static IID_IActivateAudioInterface_Completion_Handler: IID = IID {
 };
 
 mod consts {
-    pub const CHANNELS: u32 = 2;
-    pub const SAMPLE_RATE: u32 = 44100;
     pub const BUFFER_FRAMES: u32 = 4096;
 }
 
-unsafe fn audio_thread(mut mixer: crate::mixer::Mixer) {
+unsafe fn audio_thread<CB: AudioCallback>(mut cb: CB, spec: AudioParams) {
+    let sample_rate = spec.freq;
+    let channels = spec.channels;
+
     CoInitializeEx(std::ptr::null_mut(), COINIT_MULTITHREADED);
 
     let buffer_end_event = CreateEventA(std::ptr::null_mut(), FALSE, FALSE, std::ptr::null());
@@ -99,12 +106,12 @@ unsafe fn audio_thread(mut mixer: crate::mixer::Mixer) {
     );
 
     let format = WAVEFORMATEX {
-        nChannels: consts::CHANNELS as _,
-        nSamplesPerSec: consts::SAMPLE_RATE as _,
+        nChannels: channles as _,
+        nSamplesPerSec: sample_rate as _,
         wFormatTag: WAVE_FORMAT_EXTENSIBLE,
         wBitsPerSample: 32,
-        nBlockAlign: consts::CHANNELS as u16 * 4,
-        nAvgBytesPerSec: consts::CHANNELS as u32 * consts::SAMPLE_RATE as u32 * 4,
+        nBlockAlign: channles as u16 * 4,
+        nAvgBytesPerSec: channles as u32 * sample_rate as u32 * 4,
         cbSize: (std::mem::size_of::<WAVEFORMATEXTENSIBLE>() - std::mem::size_of::<WAVEFORMATEX>())
             as _,
     };
@@ -123,7 +130,7 @@ unsafe fn audio_thread(mut mixer: crate::mixer::Mixer) {
     const AUDCLNT_STREAMFLAGS_AUTOCONVERTPCM: u32 = 0x80000000;
     const AUDCLNT_STREAMFLAGS_SRC_DEFAULT_QUALITY: u32 = 0x08000000;
 
-    let dur = consts::BUFFER_FRAMES as f64 / (consts::SAMPLE_RATE as f64 * 1.0 / 10000000.0);
+    let dur = consts::BUFFER_FRAMES as f64 / (sample_rate as f64 * 1.0 / 10000000.0);
     let hr = (*audio_client).Initialize(
         AUDCLNT_SHAREMODE_SHARED,
         AUDCLNT_STREAMFLAGS_EVENTCALLBACK
@@ -175,52 +182,24 @@ unsafe fn audio_thread(mut mixer: crate::mixer::Mixer) {
 
         let buffer = std::slice::from_raw_parts_mut(
             wasapi_buffer as *mut f32,
-            num_frames as usize * consts::CHANNELS as usize,
+            num_frames as usize * channles as usize,
         );
 
-        mixer.fill_audio_buffer(buffer, num_frames as _);
+        cb.callback(buffer, num_frames as usize);
 
         (*render_client).ReleaseBuffer(num_frames, 0);
     }
 }
 
-pub struct AudioContext {
-    mixer_ctrl: crate::mixer::MixerControl,
-}
-
-impl AudioContext {
-    pub fn new() -> AudioContext {
-        use crate::mixer::Mixer;
-
-        let (mixer, mixer_ctrl) = Mixer::new();
-        std::thread::spawn(move || unsafe {
-            audio_thread(mixer);
-        });
-
-        AudioContext { mixer_ctrl }
-    }
-}
-
-pub struct Sound {
-    id: usize,
-}
-
-impl Sound {
-    pub fn load(ctx: &mut AudioContext, data: &[u8]) -> Sound {
-        let id = ctx.mixer_ctrl.load(data);
-
-        Sound { id }
-    }
-
-    pub fn play(&mut self, ctx: &mut AudioContext, params: PlaySoundParams) {
-        ctx.mixer_ctrl.play(self.id, params);
-    }
-
-    pub fn stop(&mut self, ctx: &mut AudioContext) {
-        ctx.mixer_ctrl.stop(self.id);
-    }
-
-    pub fn set_volume(&mut self, ctx: &mut AudioContext, volume: f32) {
-        ctx.mixer_ctrl.set_volume(self.id, volume);
+impl<CB> AudioDeviceImpl for AudioDevice<CB> where CB: AudioCallback {
+    fn resume(&mut self) -> Result<(), String> {
+        if let Some(cb) = self.callback.take() {
+            unsafe {
+                audio_thread(*cb, self.spec.clone());
+            };
+            Ok(())
+        } else {
+            Err(String::from("No AudioCallback found"))
+        }
     }
 }
