@@ -16,9 +16,13 @@ struct Sine {
 }
 impl AudioCallback for Sine {
     fn callback(&mut self, buffer: &mut [f32], _frames: usize) {
-        for x in buffer {
-            *x = f32::sin(2.*std::f32::consts::PI*self.freq*self.phase);
-            self.phase+=1./(self.sample_rate as f32);
+        let mut val = 0.0;
+        for (i,x) in buffer.iter_mut().enumerate() {
+            if i%2==0 {
+                val = f32::sin(2.*std::f32::consts::PI*self.freq*self.phase);
+                self.phase+=1./(self.sample_rate as f32);
+            }
+            *x = val;
         }
     }
 }
