@@ -16,9 +16,9 @@ mod opensles {
 
     pub mod api {
         pub mod channel_mask {
-            pub const FRONT_LEFT: u32 = 0b0001;
-            pub const FRONT_RIGHT: u32 = 0b0010;
-            pub const FRONT_CENTER: u32 = 0b0100;
+            pub const FRONT_LEFT: u32 =     0b0001;
+            pub const FRONT_RIGHT: u32 =    0b0010;
+            pub const FRONT_CENTER: u32 =   0b0100;
         }
 
         pub type ChannelMask = u32;
@@ -347,7 +347,10 @@ mod opensles {
     }
 }
 
-unsafe fn audio_thread<CB: 'static + AudioCallback + std::marker::Send>(mut cb: CB, spec: AudioParams) {
+unsafe fn audio_thread<CB: 'static + AudioCallback + std::marker::Send>(
+    mut cb: CB,
+    spec: AudioParams
+) {
     use opensles::api::*;
 
     use std::collections::HashMap;
@@ -364,7 +367,7 @@ unsafe fn audio_thread<CB: 'static + AudioCallback + std::marker::Send>(mut cb: 
             },
             Channels {
                 input: 0,
-                output: spec.channels as u32,
+                output: channel_mask::FRONT_LEFT | channel_mask::FRONT_RIGHT,
             },
             Box::new(move |stream| {
                 let properties = stream.properties;
@@ -381,6 +384,7 @@ unsafe fn audio_thread<CB: 'static + AudioCallback + std::marker::Send>(mut cb: 
         .unwrap();
 
     device.start();
+    loop{}
 }
 
 impl<CB> AudioDeviceImpl for AudioDevice<CB> where CB: 'static + AudioCallback + std::marker::Send {
@@ -388,7 +392,7 @@ impl<CB> AudioDeviceImpl for AudioDevice<CB> where CB: 'static + AudioCallback +
         if let Some(cb) = self.callback.take() {
             unsafe {
                 audio_thread(*cb, self.spec.clone());
-                }
+            }
             Ok(())
         } else {
             Err(String::from("No AudioCallback found"))
